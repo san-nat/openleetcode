@@ -6,11 +6,11 @@ network needed: `practice/grade.py` runs your Python solution against the same
 (`to_list_node` / `to_tree_node`, `exact` and `ignore_order` judging, and the
 oracle checkers).
 
-Dependencies: `pyyaml` for the grader, plus `sortedcontainers` if a solution
-uses it (the judged runtime provides it):
+Dependencies: `pyyaml` for the grader. `sortedcontainers` matches the judged
+runtime, and `numpy` is only needed if a solution you compare against imports it:
 
 ```console
-$ pip install pyyaml sortedcontainers
+$ pip install pyyaml sortedcontainers numpy
 ```
 
 ## The daily loop
