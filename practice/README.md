@@ -6,6 +6,13 @@ network needed: `practice/grade.py` runs your Python solution against the same
 (`to_list_node` / `to_tree_node`, `exact` and `ignore_order` judging, and the
 oracle checkers).
 
+Dependencies: `pyyaml` for the grader, plus `sortedcontainers` if a solution
+uses it (the judged runtime provides it):
+
+```console
+$ pip install pyyaml sortedcontainers
+```
+
 ## The daily loop
 
 1. **Concept questions first.** Answer them before opening an editor. If you

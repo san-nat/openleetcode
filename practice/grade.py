@@ -125,6 +125,27 @@ def materialize(spec, rng):
     raise ValueError("unsupported generator: %r" % kind)
 
 
+def coerce(value, spec):
+    """YAML types are looser than the manifest's declared param types.
+
+    `s: 7` under a `string` param has to reach the solution as "7", the way the
+    typed runtimes receive it.
+    """
+    spec = spec or {}
+    kind = spec.get("type")
+    if value is None:
+        return None
+    if kind in ("string", "char"):
+        return value if isinstance(value, str) else json.dumps(value)
+    if kind in ("int", "long") and isinstance(value, bool) is False and isinstance(value, (int, float)):
+        return int(value)
+    if kind in ("float", "double") and isinstance(value, (int, float)) and not isinstance(value, bool):
+        return float(value)
+    if kind == "array" and isinstance(value, list):
+        return [coerce(item, spec.get("items")) for item in value]
+    return value
+
+
 def build_namespace(solution_src, solution_path):
     ns = {"__name__": "__solution__", "__file__": solution_path}
     exec(compile(PREAMBLE, "<preamble>", "exec"), ns)
@@ -204,8 +225,13 @@ def run_oracle(ns, oracle, case_inputs, result):
     # checker must not see tuples, custom objects, or inputs the solution mutated.
     local.update(copy.deepcopy(case_inputs))
     local["__result__"] = json.loads(ns["to_json"](result))
+    # Most manifests write oracle args as plain names, but some use the same
+    # {placeholder} syntax as entry.call; left alone, "{height}" would evaluate
+    # as a Python set literal.
+    expr = re.sub(r"\{(\w+)\}", lambda m: "__result__" if m.group(1) == "result" else m.group(1),
+                  call.replace("{result}", "{result}"))
     try:
-        verdict = eval(call.replace("{result}", "__result__"), local)
+        verdict = eval(expr, local)
     except Exception:
         return None, traceback.format_exc(limit=3)
     return bool(verdict), None
@@ -262,7 +288,7 @@ def main():
             continue
         rng = random.Random(case.get("seed", suite_seed))
         try:
-            case_inputs = {k: materialize(v, rng) for k, v in raw_inputs.items()}
+            case_inputs = {k: coerce(materialize(v, rng), params.get(k)) for k, v in raw_inputs.items()}
         except ValueError as exc:
             skipped.append("%s (%s)" % (case.get("name", "?"), exc))
             continue
